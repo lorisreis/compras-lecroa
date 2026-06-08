@@ -139,10 +139,8 @@
     }
     .btn-exit:active { background: rgba(255,255,255,.22); }
 
-    /* Scrollable content area */
     .scrollable { flex: 1; overflow-y: auto; }
 
-    /* ─── Category label — top:0 relativo ao scrollable ─── */
     .cat-label {
       position: sticky; top: 0; z-index: 10;
       padding: 12px 20px 8px;
@@ -197,8 +195,13 @@
     }
     .qty-field:focus { outline: none; border-color: var(--caramel); }
 
-    .obs-wrap { display: none; padding: 0 20px 14px; }
-    .func-row.marked + .obs-wrap { display: block; }
+    /* ── obs field: padding-top para separar do item acima ── */
+    .obs-wrap {
+      display: none;
+      padding: 10px 20px 16px;        /* top:10px cria o espaço */
+      background: #FFF9F0;
+      border-bottom: 1px solid var(--border);
+    }
     .obs-field {
       width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
       padding: 9px 12px; font-size: 13px; font-family: var(--fn);
@@ -240,7 +243,6 @@
     .check-pulse { animation: pulse-check .4s; }
 
     /* ════════ MAE SCREEN ════════ */
-    /* Week nav */
     .week-nav {
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: space-between;
@@ -258,12 +260,9 @@
     .wn-btn:disabled { opacity: .3; pointer-events: none; }
     .wn-label { text-align: center; }
     .wn-label .wn-date { font-size: 14px; font-weight: 600; color: var(--coffee); }
-    .wn-label .wn-tag {
-      font-size: 11px; color: var(--muted); margin-top: 1px;
-    }
+    .wn-label .wn-tag { font-size: 11px; color: var(--muted); margin-top: 1px; }
     .wn-label .wn-tag.current { color: var(--caramel); font-weight: 600; }
 
-    /* Tabs */
     .tab-bar {
       flex-shrink: 0;
       display: flex; background: var(--milk);
@@ -278,20 +277,20 @@
     }
     .tab-btn.active { color: var(--coffee); border-bottom-color: var(--caramel); }
 
-    /* Mae item row */
+    /* ── mae row: padding generoso e espaço entre linhas de detalhe ── */
     .mae-row {
-      display: flex; align-items: center;
-      padding: 14px 16px 14px 20px;
+      display: flex; align-items: flex-start;
+      padding: 16px 16px 16px 20px;
       border-bottom: 1px solid var(--border);
-      background: var(--milk); gap: 10px;
+      background: var(--milk); gap: 12px;
     }
     .mae-row:last-child { border-bottom: none; }
     .mae-row.faded { opacity: .5; }
 
     .mae-info { flex: 1; min-width: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .mae-name { font-size: 15px; color: var(--coffee); }
-    .mae-qty { font-size: 12px; color: var(--muted); margin-top: 3px; }
-    .mae-badges { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .mae-name { font-size: 15px; color: var(--coffee); font-weight: 500; }
+    .mae-qty { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .mae-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 
     .badge {
       display: inline-block;
@@ -302,7 +301,7 @@
     .badge.comprado { background: var(--green-bg); color: var(--green); }
     .badge.adiado   { background: var(--amber-bg); color: var(--amber); }
 
-    .mae-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .mae-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-top: 2px; }
 
     .btn-adiar {
       background: var(--amber-bg); color: var(--amber);
@@ -323,7 +322,6 @@
     }
     .btn-buy:active { background: #BBF0D4; }
 
-    /* Empty state */
     .empty {
       padding: 72px 24px; text-align: center; color: var(--muted);
     }
@@ -402,18 +400,12 @@
 </div>
 
 <script>
-// ════════════════════════════════
-// CONFIGURAÇÃO
-// ════════════════════════════════
 const SB_URL = 'https://haubpfrlnzyygwqfyjoj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhdWJwZnJsbnp5eWd3cWZ5am9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM2MzksImV4cCI6MjA5NjUwOTYzOX0.mJRa9SNpPoH6oPc0_Wc59mzEYNxaJ04TGJaSatKMj3g';
 
 const PIN_FUNC = '381042';
 const PIN_MAE  = '526727';
 
-// ════════════════════════════════
-// CATÁLOGO
-// ════════════════════════════════
 const CATALOG = [
   { cat: 'Hortifruti', items: [
     'Maçã','Manga','Banana','Abacate','Goiaba','Maracujá','Hortelã','Tomilho',
@@ -426,13 +418,13 @@ const CATALOG = [
   ]},
   { cat: 'Cozinha / Mercearia / Empório', items: [
     'Vinagre de maçã','Azeite','Extrato de tomate','Mostarda Dijon','Óleo',
-    'Café funcionário','Fermento químico','Farinha de trigo (fina)', 'Amido de milho',
+    'Café funcionário','Fermento químico','Farinha de trigo (fina)','Amido de milho',
     'Creme de leite caixinha','Creme de leite fresco','Cream cheese','Polvilho',
     'Açúcar cristal','Açúcar refinado','Glaçucar','Desmoldante','Doce de leite',
     'Cerveja preta','Alho','Ovos','Manteiga garrafa','Melaço de cana',
     'Castanha de caju (xerem)','Leite integral','Queijo coalho','Queijo parmesão',
     'Queijo manteiga','Queijo meia cura','Mussarela de búfala','Mussarela peça',
-    'Mussarela fatiada','Presunto','Parma','Bacon fatiado','Pistache', 'Coco ralado fresco',
+    'Mussarela fatiada','Presunto','Parma','Bacon fatiado','Pistache','Coco ralado fresco',
     'Aveia em flocos','Chocolate em pó','Chocolate ao leite','Chocolate branco',
     'Chocolate meio amargo','Iogurte','Etiquetas'
   ]},
@@ -482,19 +474,13 @@ const CATALOG = [
   ]},
 ];
 
-// ════════════════════════════════
-// STATE
-// ════════════════════════════════
 let pin       = '';
 let role      = null;
-let curWeek   = getMonday(new Date());  // semana atual (funcionários sempre usam essa)
-let viewWeek  = getMonday(new Date()); // semana que a mãe está visualizando
-let data      = {};    // key → { id, quantidade, status, semana_original }
+let curWeek   = getMonday(new Date());
+let viewWeek  = getMonday(new Date());
+let data      = {};
 let activeTab = 'pendente';
 
-// ════════════════════════════════
-// UTILS DE DATA
-// ════════════════════════════════
 function getMonday(d) {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
@@ -516,16 +502,13 @@ function fmtShort(iso) {
   return `${d}/${m}/${y}`;
 }
 function weekRelLabel(iso) {
-  if (iso === curWeek)                return 'Esta semana';
-  if (iso === addWeeks(curWeek, 1))   return 'Próxima semana';
-  if (iso === addWeeks(curWeek, -1))  return 'Semana passada';
-  if (iso < curWeek)                  return 'Semana anterior';
+  if (iso === curWeek)               return 'Esta semana';
+  if (iso === addWeeks(curWeek, 1))  return 'Próxima semana';
+  if (iso === addWeeks(curWeek, -1)) return 'Semana passada';
+  if (iso < curWeek)                 return 'Semana anterior';
   return 'Semana futura';
 }
 
-// ════════════════════════════════
-// SUPABASE
-// ════════════════════════════════
 async function sb(path, opts = {}) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
     headers: {
@@ -596,9 +579,6 @@ async function adiarItem(cat, item) {
   renderMaeList();
 }
 
-// ════════════════════════════════
-// PIN
-// ════════════════════════════════
 document.querySelectorAll('.nk[data-d]').forEach(b => b.addEventListener('click', () => pressDigit(b.dataset.d)));
 document.getElementById('del-btn').addEventListener('click', delDigit);
 
@@ -630,9 +610,6 @@ function checkPin() {
   setTimeout(() => { pin = ''; refreshDots(); dots.classList.remove('shake'); }, 500);
 }
 
-// ════════════════════════════════
-// START / LOGOUT
-// ════════════════════════════════
 async function startApp(r) {
   role = r;
   localStorage.setItem('lc_role', r);
@@ -662,9 +639,6 @@ function logout() {
   document.getElementById('pin-screen').style.display = 'flex';
 }
 
-// ════════════════════════════════
-// FUNCIONÁRIO VIEW
-// ════════════════════════════════
 function renderFunc() {
   document.getElementById('func-week').textContent = fmtWeek(curWeek);
   const list = document.getElementById('func-list');
@@ -684,8 +658,7 @@ function renderFunc() {
       const d      = data[key];
       const marked = !!d;
       const qty    = d?.quantidade ?? '1';
-
-      const obs = d?.observacao ?? '';
+      const obs    = d?.observacao ?? '';
 
       const wrapper = document.createElement('div');
 
@@ -726,6 +699,7 @@ function renderFunc() {
           else           await addItem(cat, item);
         } catch(err) {
           row.classList.toggle('marked');
+          obsDiv.style.display = row.classList.contains('marked') ? 'block' : 'none';
           toast('Erro ao salvar. Tente novamente.');
         } finally {
           setSaveDot(false);
@@ -798,9 +772,6 @@ function confirmarLista() {
   }, 3000);
 }
 
-// ════════════════════════════════
-// MÃE VIEW
-// ════════════════════════════════
 function renderMae() {
   document.getElementById('mae-week-bar').textContent = fmtWeek(viewWeek);
   updateWeekNav();
@@ -813,7 +784,6 @@ function updateWeekNav() {
   const rel = weekRelLabel(viewWeek);
   tag.textContent = rel;
   tag.className = 'wn-tag' + (rel === 'Esta semana' ? ' current' : '');
-  // Não permite ir para mais de 4 semanas no futuro
   document.getElementById('wn-next').disabled = viewWeek >= addWeeks(curWeek, 4);
   document.getElementById('mae-week-bar').textContent = fmtWeek(viewWeek);
 }
@@ -937,9 +907,6 @@ function renderMaeList() {
   });
 }
 
-// ════════════════════════════════
-// UTILS
-// ════════════════════════════════
 function loading(show) { document.getElementById('loading').classList.toggle('hidden', !show); }
 function setSaveDot(on) { document.getElementById('save-dot')?.classList.toggle('on', on); }
 let toastTmr;
@@ -951,9 +918,6 @@ function toast(msg) {
   toastTmr = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// ════════════════════════════════
-// INIT
-// ════════════════════════════════
 loading(false);
 const savedRole = localStorage.getItem('lc_role');
 if (savedRole) {
