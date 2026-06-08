@@ -197,6 +197,17 @@
     }
     .qty-field:focus { outline: none; border-color: var(--caramel); }
 
+    .obs-wrap { display: none; padding: 0 20px 14px; }
+    .func-row.marked + .obs-wrap { display: block; }
+    .obs-field {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 9px 12px; font-size: 13px; font-family: var(--fn);
+      color: var(--coffee); background: var(--milk); resize: none;
+      -webkit-appearance: none;
+    }
+    .obs-field::placeholder { color: var(--muted); }
+    .obs-field:focus { outline: none; border-color: var(--caramel); }
+
     /* ─── Bottom area (func) ─── */
     .func-bottom {
       flex-shrink: 0;
@@ -446,8 +457,8 @@ const CATALOG = [
   { cat: 'Confeitaria', items: [
     'Morango','Polpa de maracujá','Pera','Pistache','Avelã',
     'Farinha de amêndoa','Amêndoa laminada','Glucose','Gelatina sem sabor',
-    'Chocolate em pó 100%','Chocolate em pó 70%','Chocolate em pó 35%',
-    'Chocolate ao leite','Chocolate branco','Chocolate meio amargo', 'Ágar-ágar'
+    'Ágar-ágar','Chocolate em pó 100%','Chocolate em pó 70%','Chocolate em pó 35%',
+    'Chocolate ao leite','Chocolate branco','Chocolate meio amargo'
   ]},
   { cat: 'Salão', items: [
     'Adoçante líquido','Adoçante sachê','Sal sachê','Açúcar sachê',
@@ -536,7 +547,8 @@ async function loadWeek(wk) {
   if (rows) rows.forEach(r => {
     data[`${r.categoria}|${r.item}`] = {
       id: r.id, quantidade: r.quantidade || '',
-      status: r.status, semana_original: r.semana_original || r.semana
+      status: r.status, semana_original: r.semana_original || r.semana,
+      observacao: r.observacao || ''
     };
   });
 }
@@ -546,11 +558,11 @@ async function addItem(cat, item) {
     method: 'POST',
     body: JSON.stringify({
       semana: curWeek, semana_original: curWeek,
-      categoria: cat, item, quantidade: '1', status: 'pendente'
+      categoria: cat, item, quantidade: '1', status: 'pendente', observacao: ''
     }),
   });
   if (rows?.[0]) data[`${cat}|${item}`] = {
-    id: rows[0].id, quantidade: '1', status: 'pendente', semana_original: curWeek
+    id: rows[0].id, quantidade: '1', status: 'pendente', semana_original: curWeek, observacao: ''
   };
 }
 
@@ -673,6 +685,10 @@ function renderFunc() {
       const marked = !!d;
       const qty    = d?.quantidade ?? '1';
 
+      const obs = d?.observacao ?? '';
+
+      const wrapper = document.createElement('div');
+
       const row = document.createElement('div');
       row.className = 'func-row' + (marked ? ' marked' : '');
       row.dataset.cat  = cat;
@@ -690,10 +706,16 @@ function renderFunc() {
           <button class="qty-btn" data-dir="1">+</button>
         </div>`;
 
+      const obsDiv = document.createElement('div');
+      obsDiv.className = 'obs-wrap';
+      obsDiv.style.display = marked ? 'block' : 'none';
+      obsDiv.innerHTML = `<textarea class="obs-field" rows="2" placeholder="Observação (opcional)...">${obs}</textarea>`;
+
       row.addEventListener('click', async e => {
         if (e.target.closest('.qty-wrap')) return;
         const wasMarked = row.classList.contains('marked');
         row.classList.toggle('marked');
+        obsDiv.style.display = row.classList.contains('marked') ? 'block' : 'none';
         const cb = row.querySelector('.check-box');
         cb.style.animation = 'none';
         requestAnimationFrame(() => { cb.style.animation = ''; cb.classList.add('check-pulse'); });
@@ -735,7 +757,18 @@ function renderFunc() {
         finally { setSaveDot(false); }
       });
 
-      group.appendChild(row);
+      obsDiv.querySelector('.obs-field').addEventListener('input', e => e.stopPropagation());
+      obsDiv.querySelector('.obs-field').addEventListener('blur', async e => {
+        const v = e.target.value.trim();
+        setSaveDot(true);
+        try { await patchItem(cat, item, { observacao: v }); }
+        catch { toast('Erro ao salvar observação.'); }
+        finally { setSaveDot(false); }
+      });
+
+      wrapper.appendChild(row);
+      wrapper.appendChild(obsDiv);
+      group.appendChild(wrapper);
     });
     list.appendChild(group);
   });
@@ -858,6 +891,7 @@ function renderMaeList() {
           <div class="mae-info">
             <div class="mae-name">${item}</div>
             ${d.quantidade ? `<div class="mae-qty">Qtd: ${d.quantidade}</div>` : ''}
+            ${d.observacao ? `<div class="mae-qty" style="font-style:italic">📝 ${d.observacao}</div>` : ''}
             <div class="mae-badges">${badges}</div>
           </div>
           <div class="mae-actions">
@@ -887,6 +921,7 @@ function renderMaeList() {
           <div class="mae-info">
             <div class="mae-name">${item}</div>
             ${d.quantidade ? `<div class="mae-qty">Qtd: ${d.quantidade}</div>` : ''}
+            ${d.observacao ? `<div class="mae-qty" style="font-style:italic">📝 ${d.observacao}</div>` : ''}
             <div class="mae-badges">${badges}</div>
           </div>`;
         row.querySelector('.mae-info').addEventListener('click', async () => {
