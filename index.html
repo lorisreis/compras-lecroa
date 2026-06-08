@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Lê Croá — Compras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --espresso: #1C0F07;
+      --coffee:   #2C1A0E;
+      --mocha:    #6B3F1F;
+      --caramel:  #C49A2B;
+      --latte:    #D4B896;
+      --cream:    #FAF7F2;
+      --milk:     #FFFFFF;
+      --border:   #EAE0D5;
+      --muted:    #9A8070;
+      --red:      #C0392B;
+      --red-bg:   #FEF0EE;
+      --green:    #1E7A4E;
+      --green-bg: #E8F5EE;
+      --r:        14px;
+      --shadow:   0 2px 16px rgba(28,15,7,.08);
+      --font-body: 'DM Sans', sans-serif;
+      --font-head: 'DM Serif Display', serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { height: 100%; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--coffee);
+      min-height: 100%;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ─── LOADING OVERLAY ─── */
+    #loading {
+      position: fixed; inset: 0;
+      background: var(--cream);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 14px; z-index: 500;
+      transition: opacity .3s;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--coffee);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { font-size: 14px; color: var(--muted); }
+
+    /* ─── TOAST ─── */
+    #toast {
+      position: fixed; bottom: 88px; left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--espresso); color: #fff;
+      padding: 11px 22px; border-radius: 100px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: all .25s; z-index: 400;
+      white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ════════════════════════════
+       PIN SCREEN
+    ════════════════════════════ */
+    #pin-screen {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100svh; padding: 40px 28px 60px;
+      gap: 36px;
+    }
+    .pin-logo { text-align: center; }
+    .pin-logo .logo-icon {
+      font-size: 48px; display: block; margin-bottom: 12px;
+      filter: drop-shadow(0 4px 8px rgba(196,154,43,.3));
+    }
+    .pin-logo h1 {
+      font-family: var(--font-head);
+      font-size: 32px; color: var(--coffee);
+      letter-spacing: -.5px;
+    }
+    .pin-logo p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    .pin-dots {
+      display: flex; gap: 16px;
+      padding: 8px 0;
+    }
+    .pin-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--milk);
+      transition: all .15s cubic-bezier(.34,1.56,.64,1);
+    }
+    .pin-dot.filled {
+      background: var(--coffee);
+      border-color: var(--coffee);
+      transform: scale(1.1);
+    }
+    .pin-dot.error {
+      background: var(--red);
+      border-color: var(--red);
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      15%      { transform: translateX(-10px); }
+      35%      { transform: translateX(9px); }
+      55%      { transform: translateX(-6px); }
+      75%      { transform: translateX(5px); }
+    }
+    .shake { animation: shake .4s ease; }
+
+    .pin-hint {
+      font-size: 13px; color: var(--red);
+      min-height: 18px; text-align: center;
+      transition: opacity .2s;
+    }
+
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 72px);
+      gap: 14px;
+    }
+    .nk {
+      width: 72px; height: 72px;
+      border: none; border-radius: 50%;
+      background: var(--milk);
+      box-shadow: var(--shadow);
+      font-family: var(--font-body);
+      font-size: 24px; font-weight: 500;
+      color: var(--coffee);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .1s, background .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nk:active { transform: scale(.9); background: var(--border); }
+    .nk.del { font-size: 20px; color: var(--muted); }
+    .nk.ghost { background: transparent; box-shadow: none; pointer-events: none; }
+
+    /* ════════════════════════════
+       SHARED LAYOUT
+    ════════════════════════════ */
+    .screen { display: none; flex-direction: column; min-height: 100svh; }
+    .screen.active { display: flex; }
+
+    .app-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--espresso);
+      padding: 16px 20px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,.2);
+    }
+    .app-bar-left h2 {
+      font-family: var(--font-head);
+      font-size: 20px; color: #fff;
+      letter-spacing: -.3px;
+    }
+    .app-bar-left .week-lbl {
+      font-size: 12px; color: var(--latte);
+      margin-top: 2px;
+    }
+    .app-bar-right {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .save-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%; background: #5CDB95;
+      opacity: 0; transition: opacity .3s;
+    }
+    .save-dot.on { opacity: 1; }
+    .btn-exit {
+      background: rgba(255,255,255,.12);
+      border: none; color: #fff;
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 13px; font-family: var(--font-body);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-exit:active { background: rgba(255,255,255,.22); }
+
+    .scrollable { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+
+    /* ─── Category Label ─── */
+    .cat-label {
+      padding: 16px 20px 8px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--cream);
+      position: sticky; top: 64px; z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ─── Item list ─── */
+    .item-group { background: var(--milk); }
+
+    /* ════════════════════════════
+       FUNCIONARIO VIEW
+    ════════════════════════════ */
+    .func-row {
+      display: flex; align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 14px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+      user-select: none;
+    }
+    .func-row:last-child { border-bottom: none; }
+    .func-row.marked { background: #FFF9F0; }
+
+    .check-box {
+      width: 26px; height: 26px;
+      border-radius: 7px;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s cubic-bezier(.34,1.56,.64,1);
+      background: var(--milk);
+    }
+    .func-row.marked .check-box {
+      background: var(--red);
+      border-color: var(--red);
+      transform: scale(1.05);
+    }
+    .check-box svg { display: none; }
+    .func-row.marked .check-box svg { display: block; }
+
+    .item-lbl { flex: 1; font-size: 15px; line-height: 1.3; }
+
+    .qty-wrap {
+      display: none; align-items: center; gap: 8px;
+    }
+    .func-row.marked .qty-wrap { display: flex; }
+
+    .qty-btn {
+      width: 30px; height: 30px;
+      border-radius: 50%; border: none;
+      background: var(--border);
+      font-size: 18px; font-weight: 400;
+      color: var(--coffee);
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .1s;
+    }
+    .qty-btn:active { background: var(--mocha); color: #fff; }
+
+    .qty-field {
+      width: 38px; text-align: center;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 2px;
+      font-size: 14px; font-weight: 600;
+      font-family: var(--font-body);
+      color: var(--coffee);
+      background: var(--milk);
+      -webkit-appearance: none;
+    }
+    .qty-field:focus { outline: none; border-color: var(--caramel); }
+
+    /* ─── Bottom bar ─── */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--milk);
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 -4px 20px rgba(28,15,7,.06);
+    }
+    .count-lbl { font-size: 14px; color: var(--muted); }
+    .count-lbl strong { color: var(--coffee); }
+
+    /* ════════════════════════════
+       MAE VIEW — TABS
+    ════════════════════════════ */
+    .tab-bar {
+      display: flex; background: var(--milk);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 64px; z-index: 99;
+    }
+    .tab-btn {
+      flex: 1; padding: 14px 8px;
+      border: none; background: none;
+      font-family: var(--font-body);
+      font-size: 14px; font-weight: 600;
+      color: var(--muted); cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn.active { color: var(--coffee); border-bottom-color: var(--caramel); }
+
+    /* ─── Mae item row ─── */
+    .mae-row {
+      display: flex; align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 14px; cursor: pointer;
+      background: var(--milk);
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .mae-row:last-child { border-bottom: none; }
+    .mae-row:active { background: var(--cream); }
+    .mae-row.faded { opacity: .55; }
+
+    .mae-info { flex: 1; }
+    .mae-name { font-size: 15px; color: var(--coffee); }
+    .mae-qty {
+      font-size: 12px; color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .badge {
+      font-size: 11px; font-weight: 600;
+      padding: 5px 12px; border-radius: 100px;
+      flex-shrink: 0;
+    }
+    .badge.pendente { background: var(--red-bg); color: var(--red); }
+    .badge.comprado { background: var(--green-bg); color: var(--green); }
+
+    /* ─── Empty state ─── */
+    .empty {
+      padding: 72px 24px; text-align: center;
+      color: var(--muted);
+    }
+    .empty .ico { font-size: 44px; margin-bottom: 12px; display: block; }
+    .empty p { font-size: 15px; }
+
+    /* ─── Mae scroll (tab bar is sticky, so offset) ─── */
+    #mae-screen .scrollable { padding-bottom: 24px; }
+
+    /* ─── Pulse animation on check ─── */
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(192,57,43,.4); }
+      70% { box-shadow: 0 0 0 10px rgba(192,57,43,0); }
+      100% { box-shadow: 0 0 0 0 rgba(192,57,43,0); }
+    }
+    .func-row.marking .check-box { animation: pulse .4s; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading"><div class="spinner"></div><p>Carregando...</p></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════
+     PIN SCREEN
+══════════════════════════════════ -->
+<div id="pin-screen">
+  <div class="pin-logo">
+    <span class="logo-icon">☕</span>
+    <h1>Lê Croá</h1>
+    <p>Controle de compras</p>
+  </div>
+
+  <div id="pin-dots" class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+    <div class="pin-dot" id="pd4"></div>
+    <div class="pin-dot" id="pd5"></div>
+  </div>
+
+  <p class="pin-hint" id="pin-hint"></p>
+
+  <div class="numpad">
+    <button class="nk" data-d="1">1</button>
+    <button class="nk" data-d="2">2</button>
+    <button class="nk" data-d="3">3</button>
+    <button class="nk" data-d="4">4</button>
+    <button class="nk" data-d="5">5</button>
+    <button class="nk" data-d="6">6</button>
+    <button class="nk" data-d="7">7</button>
+    <button class="nk" data-d="8">8</button>
+    <button class="nk" data-d="9">9</button>
+    <button class="nk ghost"></button>
+    <button class="nk" data-d="0">0</button>
+    <button class="nk del" id="del-btn">⌫</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     FUNCIONARIO SCREEN
+══════════════════════════════════ -->
+<div class="screen" id="func-screen">
+  <div class="app-bar">
+    <div class="app-bar-left">
+      <h2>Em falta</h2>
+      <div class="week-lbl" id="func-week"></div>
+    </div>
+    <div class="app-bar-right">
+      <div class="save-dot" id="save-dot"></div>
+      <button class="btn-exit" onclick="logout()">Sair</button>
+    </div>
+  </div>
+  <div class="scrollable" id="func-list"></div>
+  <div class="bottom-bar">
+    <span class="count-lbl" id="func-count">Nenhum item marcado</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MAE SCREEN
+══════════════════════════════════ -->
+<div class="screen" id="mae-screen">
+  <div class="app-bar">
+    <div class="app-bar-left">
+      <h2>Lista de compras</h2>
+      <div class="week-lbl" id="mae-week"></div>
+    </div>
+    <div class="app-bar-right">
+      <button class="btn-exit" onclick="logout()">Sair</button>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-pend" onclick="setTab('pendente')">
+      Pendentes <span id="n-pend"></span>
+    </button>
+    <button class="tab-btn" id="tab-comp" onclick="setTab('comprado')">
+      Comprados <span id="n-comp"></span>
+    </button>
+  </div>
+  <div class="scrollable" id="mae-list"></div>
+</div>
+
+<script>
+// ════════════════════════════════
+// ⚠️  CONFIGURAÇÃO — edite aqui
+// ════════════════════════════════
+const SB_URL  = 'https://haubpfrlnzyygwqfyjoj.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhdWJwZnJsbnp5eWd3cWZ5am9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzM2MzksImV4cCI6MjA5NjUwOTYzOX0.mJRa9SNpPoH6oPc0_Wc59mzEYNxaJ04TGJaSatKMj3g';
+
+const PIN_FUNC = '381042';   // funcionários
+const PIN_MAE  = '526727';   // sua mãe
+
+// ════════════════════════════════
+// CATÁLOGO (copiado fielmente)
+// ════════════════════════════════
+const CATALOG = [
+  { cat: 'Hortifruti', items: [
+    'Maçã','Manga','Banana','Abacate','Goiaba','Maracujá','Hortelã','Tomilho',
+    'Pimenta dedo de moça','Manjericão','Alface','Salsa','Brotos','Cebolinha',
+    'Rúcula','Tomate cereja','Cenoura','Maxixe','Cebola','Cebola branca',
+    'Tomate','Gengibre','Pimentão verde','Pimentão amarelo','Pimentão vermelho'
+  ]},
+  { cat: 'Frutas para Salada', items: [
+    'Abacaxi','Maçã','Uva','Melancia','Mamão'
+  ]},
+  { cat: 'Cozinha / Mercearia / Empório', items: [
+    'Vinagre de maçã','Azeite','Extrato de tomate','Mostarda Dijon','Óleo',
+    'Café funcionário','Fermento químico','Farinha de trigo (fina)',
+    'Creme de leite caixinha','Creme de leite fresco','Cream cheese','Polvilho',
+    'Açúcar cristal','Açúcar refinado','Glaçucar','Desmoldante','Doce de leite',
+    'Cerveja preta','Alho','Ovos','Manteiga garrafa','Melaço de cana',
+    'Castanha de caju (xerem)','Leite integral','Queijo coalho','Queijo parmesão',
+    'Queijo manteiga','Queijo meia cura','Mussarela de búfala','Mussarela peça',
+    'Mussarela fatiada','Presunto','Parma','Bacon fatiado','Pistache',
+    'Aveia em flocos','Chocolate em pó','Chocolate ao leite','Chocolate branco',
+    'Chocolate meio amargo','Iogurte','Etiquetas'
+  ]},
+  { cat: 'Granola', items: [
+    'Linhaça','Chia','Damasco','Uva passas','Lasca de coco',
+    'Flocos de milho','Semente de girassol'
+  ]},
+  { cat: 'Bar', items: [
+    'Coca-Cola Zero','Coca-Cola Normal','Guaraná Zero','Guaraná Normal',
+    'Água com gás','Água sem gás','Água tônica',
+    'Chocolate ao leite','Chocolate branco',
+    'Filtro V60','Café em grãos','Café coado','Café expresso','Café funcionários',
+    'Matchá','Laranja','Limão','Caldo de cana','Beterraba',
+    'Leite Piracanjuba','Leite de aveia','Clitória'
+  ]},
+  { cat: 'Rafael', items: [
+    'Manteiga','Farinha T45','Farinha T65','Fermento','Desmoldante','Palito de chocolate'
+  ]},
+  { cat: 'Açougue', items: [
+    'Pés de galinha','Pernil','Carne de sol'
+  ]},
+  { cat: 'Confeitaria', items: [
+    'Morango','Polpa de maracujá','Pera','Pistache','Avelã',
+    'Farinha de amêndoa','Amêndoa laminada','Glucose','Gelatina sem sabor',
+    'Chocolate em pó 100%','Chocolate em pó 70%','Chocolate em pó 35%',
+    'Chocolate ao leite','Chocolate branco','Chocolate meio amargo'
+  ]},
+  { cat: 'Salão', items: [
+    'Adoçante líquido','Adoçante sachê','Sal sachê','Açúcar sachê',
+    'Guardanapos','Canudos','Álcool'
+  ]},
+  { cat: 'Material de Limpeza', items: [
+    'Detergente','Desinfetante','Água sanitária','Bucha de cozinha','Bombril',
+    'Sabão em pó','Baygon','Saco de lixo 100L','Saco de lixo 60L',
+    'Perflex','Papel toalha','Pano de chão','Pano de prato','Rodo','Vassoura'
+  ]},
+  { cat: 'Banheiros', items: [
+    'Papel higiênico','Papel interfolhado','Sabonete líquido','Difusor de ambiente'
+  ]},
+  { cat: 'Escritório', items: [
+    'Bombina PDV','Bombonas','Etiquetas','Tinta para carimbo','Canetas','Grampos'
+  ]},
+  { cat: 'Embalagens', items: [
+    'Embalagens para basque','Copo descartável',
+    'Potes de 1 kg','Potes de 500g','Potes de 250g',
+    'Sacos kraft P','Sacos kraft M','Sacos kraft G'
+  ]},
+];
+
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let pin        = '';
+let role       = null;        // 'func' | 'mae'
+let weekKey    = getMonday(); // 'YYYY-MM-DD'
+let data       = {};          // key → { id, quantidade, status }
+let activeTab  = 'pendente';
+
+// ════════════════════════════════
+// WEEK
+// ════════════════════════════════
+function getMonday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+function fmtWeek(iso) {
+  const [y,m,d] = iso.split('-');
+  return `Semana de ${d}/${m}/${y}`;
+}
+
+// ════════════════════════════════
+// SUPABASE
+// ════════════════════════════════
+async function sb(path, opts = {}) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer ?? 'return=representation',
+    },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function loadWeek() {
+  const rows = await sb(`pedidos?semana=eq.${weekKey}&select=*`);
+  data = {};
+  if (rows) rows.forEach(r => {
+    data[`${r.categoria}|${r.item}`] = { id: r.id, quantidade: r.quantidade || '', status: r.status };
+  });
+}
+
+async function addItem(cat, item) {
+  const rows = await sb('pedidos', {
+    method: 'POST',
+    body: JSON.stringify({ semana: weekKey, categoria: cat, item, quantidade: '1', status: 'pendente' }),
+  });
+  if (rows?.[0]) data[`${cat}|${item}`] = { id: rows[0].id, quantidade: '1', status: 'pendente' };
+}
+
+async function removeItem(cat, item) {
+  const key = `${cat}|${item}`;
+  if (!data[key]) return;
+  await sb(`pedidos?id=eq.${data[key].id}`, { method: 'DELETE', prefer: '' });
+  delete data[key];
+}
+
+async function patchItem(cat, item, fields) {
+  const key = `${cat}|${item}`;
+  if (!data[key]) return;
+  await sb(`pedidos?id=eq.${data[key].id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+    prefer: '',
+  });
+  Object.assign(data[key], fields);
+}
+
+// ════════════════════════════════
+// PIN
+// ════════════════════════════════
+document.querySelectorAll('.nk[data-d]').forEach(btn => {
+  btn.addEventListener('click', () => pressDigit(btn.dataset.d));
+});
+document.getElementById('del-btn').addEventListener('click', delDigit);
+
+function pressDigit(d) {
+  if (pin.length >= 6) return;
+  pin += d;
+  refreshDots();
+  if (pin.length === 6) setTimeout(checkPin, 120);
+}
+function delDigit() {
+  pin = pin.slice(0, -1);
+  refreshDots();
+  document.getElementById('pin-hint').textContent = '';
+}
+function refreshDots() {
+  for (let i = 0; i < 6; i++) {
+    const el = document.getElementById(`pd${i}`);
+    el.classList.toggle('filled', i < pin.length);
+    el.classList.remove('error');
+  }
+}
+function checkPin() {
+  if (pin === PIN_FUNC)     { startApp('func'); return; }
+  if (pin === PIN_MAE)      { startApp('mae');  return; }
+  // wrong
+  for (let i = 0; i < 6; i++) document.getElementById(`pd${i}`).classList.add('error');
+  const dots = document.getElementById('pin-dots');
+  dots.classList.add('shake');
+  document.getElementById('pin-hint').textContent = 'PIN incorreto. Tente novamente.';
+  setTimeout(() => {
+    pin = ''; refreshDots();
+    dots.classList.remove('shake');
+  }, 500);
+}
+
+// ════════════════════════════════
+// START / LOGOUT
+// ════════════════════════════════
+async function startApp(r) {
+  role = r;
+  localStorage.setItem('lc_role', r);
+  loading(true);
+  document.getElementById('pin-screen').style.display = 'none';
+  try {
+    await loadWeek();
+    if (r === 'func') renderFunc();
+    else               renderMae();
+    document.getElementById(`${r}-screen`).classList.add('active');
+  } catch(e) {
+    console.error(e);
+    toast('Erro ao conectar ao banco. Verifique a configuração.');
+    document.getElementById('pin-screen').style.display = 'flex';
+  } finally {
+    loading(false);
+  }
+}
+function logout() {
+  localStorage.removeItem('lc_role');
+  role = null; pin = '';
+  refreshDots();
+  document.getElementById('pin-hint').textContent = '';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('pin-screen').style.display = 'flex';
+}
+
+// ════════════════════════════════
+// FUNCIONARIO VIEW
+// ════════════════════════════════
+function renderFunc() {
+  document.getElementById('func-week').textContent = fmtWeek(weekKey);
+  const list = document.getElementById('func-list');
+  list.innerHTML = '';
+
+  CATALOG.forEach(({ cat, items }) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.textContent = cat;
+    list.appendChild(lbl);
+
+    const group = document.createElement('div');
+    group.className = 'item-group';
+
+    items.forEach(item => {
+      const key  = `${cat}|${item}`;
+      const d    = data[key];
+      const marked = !!d;
+      const qty  = d?.quantidade ?? '1';
+
+      const row = document.createElement('div');
+      row.className = 'func-row' + (marked ? ' marked' : '');
+      row.dataset.cat  = cat;
+      row.dataset.item = item;
+
+      row.innerHTML = `
+        <div class="check-box">
+          <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
+            <path d="M1.5 5.5L5.5 9.5L12.5 1.5" stroke="white" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="item-lbl">${item}</span>
+        <div class="qty-wrap">
+          <button class="qty-btn" data-dir="-1">−</button>
+          <input class="qty-field" type="number" min="1" value="${qty}">
+          <button class="qty-btn" data-dir="1">+</button>
+        </div>
+      `;
+
+      // Toggle mark
+      row.addEventListener('click', async e => {
+        if (e.target.closest('.qty-wrap')) return;
+        row.classList.add('marking');
+        setTimeout(() => row.classList.remove('marking'), 400);
+        const wasMarked = row.classList.contains('marked');
+        row.classList.toggle('marked');
+        setSaveDot(true);
+        try {
+          if (wasMarked) await removeItem(cat, item);
+          else           await addItem(cat, item);
+          if (!wasMarked) {
+            row.querySelector('.qty-field').value = '1';
+          }
+        } catch(err) {
+          row.classList.toggle('marked'); // revert
+          toast('Erro ao salvar. Tente novamente.');
+        } finally {
+          setSaveDot(false);
+          updateCount();
+        }
+      });
+
+      // Qty buttons
+      row.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const input = row.querySelector('.qty-field');
+          const cur   = parseInt(input.value) || 1;
+          const next  = Math.max(1, cur + parseInt(btn.dataset.dir));
+          input.value = next;
+          setSaveDot(true);
+          try { await patchItem(cat, item, { quantidade: String(next) }); }
+          catch(err) { toast('Erro ao salvar quantidade.'); }
+          finally { setSaveDot(false); }
+        });
+      });
+
+      // Qty input blur
+      row.querySelector('.qty-field').addEventListener('change', async e => {
+        e.stopPropagation();
+        const v = Math.max(1, parseInt(e.target.value) || 1);
+        e.target.value = v;
+        setSaveDot(true);
+        try { await patchItem(cat, item, { quantidade: String(v) }); }
+        catch(err) { toast('Erro ao salvar quantidade.'); }
+        finally { setSaveDot(false); }
+      });
+
+      group.appendChild(row);
+    });
+
+    list.appendChild(group);
+  });
+
+  updateCount();
+}
+
+function updateCount() {
+  const n = Object.keys(data).length;
+  const el = document.getElementById('func-count');
+  el.innerHTML = n === 0
+    ? 'Nenhum item marcado'
+    : `<strong>${n}</strong> ${n === 1 ? 'item marcado' : 'itens marcados'}`;
+}
+
+// ════════════════════════════════
+// MAE VIEW
+// ════════════════════════════════
+function renderMae() {
+  document.getElementById('mae-week').textContent = fmtWeek(weekKey);
+  renderMaeList();
+}
+
+function setTab(t) {
+  activeTab = t;
+  document.getElementById('tab-pend').classList.toggle('active', t === 'pendente');
+  document.getElementById('tab-comp').classList.toggle('active', t === 'comprado');
+  renderMaeList();
+}
+
+function renderMaeList() {
+  const list = document.getElementById('mae-list');
+  list.innerHTML = '';
+
+  let nPend = 0, nComp = 0;
+  const sections = [];
+
+  CATALOG.forEach(({ cat, items }) => {
+    const rows = [];
+    items.forEach(item => {
+      const key = `${cat}|${item}`;
+      const d   = data[key];
+      if (!d) return;
+      if (d.status === 'pendente') nPend++;
+      else                         nComp++;
+      if (d.status === activeTab)  rows.push({ item, d });
+    });
+    if (rows.length) sections.push({ cat, rows });
+  });
+
+  document.getElementById('n-pend').textContent = nPend ? `(${nPend})` : '';
+  document.getElementById('n-comp').textContent = nComp ? `(${nComp})` : '';
+
+  if (!sections.length) {
+    list.innerHTML = activeTab === 'pendente'
+      ? `<div class="empty"><span class="ico">✅</span><p>Tudo comprado por essa semana!</p></div>`
+      : `<div class="empty"><span class="ico">🛒</span><p>Nenhum item comprado ainda.</p></div>`;
+    return;
+  }
+
+  sections.forEach(({ cat, rows }) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.textContent = cat;
+    list.appendChild(lbl);
+
+    const group = document.createElement('div');
+    group.className = 'item-group';
+
+    rows.forEach(({ item, d }) => {
+      const row = document.createElement('div');
+      row.className = 'mae-row' + (d.status === 'comprado' ? ' faded' : '');
+      row.innerHTML = `
+        <div class="mae-info">
+          <div class="mae-name">${item}</div>
+          ${d.quantidade ? `<div class="mae-qty">Qtd: ${d.quantidade}</div>` : ''}
+        </div>
+        <span class="badge ${d.status}">
+          ${d.status === 'pendente' ? 'Pendente' : '✓ Comprado'}
+        </span>
+      `;
+      row.addEventListener('click', async () => {
+        loading(true);
+        try {
+          if (d.status === 'pendente') {
+            await patchItem(cat, item, { status: 'comprado' });
+            toast('✓ Marcado como comprado');
+          } else {
+            await patchItem(cat, item, { status: 'pendente' });
+          }
+          renderMaeList();
+        } catch(e) {
+          toast('Erro ao atualizar.');
+        } finally {
+          loading(false);
+        }
+      });
+      group.appendChild(row);
+    });
+
+    list.appendChild(group);
+  });
+}
+
+// ════════════════════════════════
+// UTILS
+// ════════════════════════════════
+function loading(show) {
+  document.getElementById('loading').classList.toggle('hidden', !show);
+}
+function setSaveDot(on) {
+  document.getElementById('save-dot')?.classList.toggle('on', on);
+}
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ════════════════════════════════
+// INIT
+// ════════════════════════════════
+loading(false);
+const savedRole = localStorage.getItem('lc_role');
+if (savedRole) {
+  document.getElementById('pin-screen').style.display = 'none';
+  startApp(savedRole);
+}
+</script>
+</body>
+</html>
